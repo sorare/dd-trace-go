@@ -26,21 +26,21 @@ type tracedStmt struct {
 func (s *tracedStmt) Close() (err error) {
 	start := time.Now()
 	err = s.Stmt.Close()
-	s.tryTrace(s.ctx, queryTypeClose, "", start, err)
+	s.tryTrace(s.ctx, queryTypeClose, "", start, err, nil)
 	return err
 }
 
 // ExecContext is needed to implement the driver.StmtExecContext interface
 func (s *tracedStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (res driver.Result, err error) {
 	start := time.Now()
-	if stmtExecContext, ok := s.Stmt.(driver.StmtExecContext); ok {
-		res, err := stmtExecContext.ExecContext(ctx, args)
-		s.tryTrace(ctx, queryTypeExec, s.query, start, err)
-		return res, err
-	}
 	dargs, err := namedValueToValue(args)
 	if err != nil {
 		return nil, err
+	}
+	if stmtExecContext, ok := s.Stmt.(driver.StmtExecContext); ok {
+		res, err := stmtExecContext.ExecContext(ctx, args)
+		s.tryTrace(ctx, queryTypeExec, s.query, start, err, dargs)
+		return res, err
 	}
 	select {
 	case <-ctx.Done():
@@ -48,21 +48,21 @@ func (s *tracedStmt) ExecContext(ctx context.Context, args []driver.NamedValue) 
 	default:
 	}
 	res, err = s.Exec(dargs)
-	s.tryTrace(ctx, queryTypeExec, s.query, start, err)
+	s.tryTrace(ctx, queryTypeExec, s.query, start, err, dargs)
 	return res, err
 }
 
 // QueryContext is needed to implement the driver.StmtQueryContext interface
 func (s *tracedStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (rows driver.Rows, err error) {
 	start := time.Now()
-	if stmtQueryContext, ok := s.Stmt.(driver.StmtQueryContext); ok {
-		rows, err := stmtQueryContext.QueryContext(ctx, args)
-		s.tryTrace(ctx, queryTypeQuery, s.query, start, err)
-		return rows, err
-	}
 	dargs, err := namedValueToValue(args)
 	if err != nil {
 		return nil, err
+	}
+	if stmtQueryContext, ok := s.Stmt.(driver.StmtQueryContext); ok {
+		rows, err := stmtQueryContext.QueryContext(ctx, args)
+		s.tryTrace(ctx, queryTypeQuery, s.query, start, err, dargs)
+		return rows, err
 	}
 	select {
 	case <-ctx.Done():
@@ -70,7 +70,7 @@ func (s *tracedStmt) QueryContext(ctx context.Context, args []driver.NamedValue)
 	default:
 	}
 	rows, err = s.Query(dargs)
-	s.tryTrace(ctx, queryTypeQuery, s.query, start, err)
+	s.tryTrace(ctx, queryTypeQuery, s.query, start, err, dargs)
 	return rows, err
 }
 

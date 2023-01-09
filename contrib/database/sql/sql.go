@@ -156,7 +156,7 @@ func (t *tracedConnector) Connect(ctx context.Context) (driver.Conn, error) {
 	}
 	start := time.Now()
 	conn, err := t.connector.Connect(ctx)
-	tp.tryTrace(ctx, queryTypeConnect, "", start, err)
+	tp.tryTrace(ctx, queryTypeConnect, "", start, err, nil)
 	if err != nil {
 		return nil, err
 	}
